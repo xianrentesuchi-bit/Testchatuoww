@@ -1,0 +1,356 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const { createClient } = require('@libsql/client');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
+
+// --- 各種設定（環境に合わせて書き換てください） ---
+const GAS_WEBAPP_URL = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwYsl3issVM1SgFyeuRVCITmIfex6kc7lmuiRXVpxbD195ctM0aAsyUxBV_NZxVz9UH/exec";
+const db = createClient({
+    url: process.env.TURSO_DATABASE_URL || "libsql://senninchat-senninch.aws-ap-northeast-1.turso.io",
+    authToken: process.env.TURSO_AUTH_TOKEN || "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Nzk4ODU4MzIsImlkIjoiMDE5ZTY5NTgtZTcwMS03NzhmLWFkYjAtMGQzMzM5ZDdlMDBlIiwicmlkIjoiZGU3ZTdlNTktYjZmMi00YWQ4LWIwNDMtYzkyMmY4ZDE2NGVkIn0.ER5t8rLt3YMoOWBv03igSfFH_z_O7JkdxedTLOOxv6HZ0SqiUa2Ef_Kre1qN0paLbTUkEpqlxlA5UrSSDvJkCA"
+});
+
+// データベースの初期化
+async function initDB() {
+    await db.execute(
+        `CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE
+        )`
+    );
+    await db.execute(
+        `CREATE TABLE IF NOT EXISTS friends (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            friend_id TEXT NOT NULL,
+            UNIQUE(user_id, friend_id)
+        )`
+    );
+    // 送信取り消し用フラグ (is_deleted) をカラムとして追加
+    await db.execute(
+        `CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel TEXT NOT NULL,
+            name TEXT NOT NULL,
+            avatar TEXT NOT NULL,
+            color TEXT NOT NULL,
+            text TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            is_deleted INTEGER DEFAULT 0
+        )`
+    );
+    // 既読状態管理用テーブル
+    await db.execute(
+        `CREATE TABLE IF NOT EXISTS message_reads (
+            message_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            PRIMARY KEY(message_id, user_id)
+        )`
+    );
+    // グループ管理用テーブル
+    await db.execute(
+        `CREATE TABLE IF NOT EXISTS groups (
+            group_id TEXT PRIMARY KEY,
+            group_name TEXT NOT NULL
+        )`
+    );
+    // グループメンバー管理用テーブル
+    await db.execute(
+        `CREATE TABLE IF NOT EXISTS group_members (
+            group_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            PRIMARY KEY(group_id, user_id)
+        )`
+    );
+}
+initDB().catch(console.error);
+
+// --- アカウントサービスAPI (GAS連携) ---
+
+// 1. ログイン処理
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const gasRes = await fetch(`${GAS_WEBAPP_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`, {
+            method: 'POST'
+        });
+        const result = await gasRes.json();
+
+        if (result.success) {
+            await db.execute({
+                sql: "INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
+                args: [result.userId, result.username]
+            });
+        }
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 2. 新規登録処理
+app.post('/api/register', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const gasRes = await fetch(`${GAS_WEBAPP_URL}?action=register&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`, {
+            method: 'POST'
+        });
+        const result = await gasRes.json();
+
+        if (result.success) {
+            await db.execute({
+                sql: "INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
+                args: [result.userId, result.username]
+            });
+        }
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. フレンド追加処理
+app.post('/api/friends/add', async (req, res) => {
+    const { userId, friendId } = req.body;
+    if (!userId || !friendId) {
+        return res.json({ success: false, message: "ユーザーIDまたはフレンドIDが不足しています。" });
+    }
+    if (userId === friendId) {
+        return res.json({ success: false, message: "自分自身をフレンドに追加することはできません。" });
+    }
+    try {
+        const userCheck = await db.execute({
+            sql: "SELECT username FROM users WHERE user_id = ?",
+            args: [friendId]
+        });
+        if (userCheck.rows.length === 0) {
+            return res.json({ success: false, message: "該当する固有IDのユーザーがチャットシステムに見つかりません。" });
+        }
+
+        await db.execute({
+            sql: "INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)",
+            args: [userId, friendId]
+        });
+
+        await db.execute({
+            sql: "INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)",
+            args: [friendId, userId]
+        });
+
+        res.json({ success: true, message: `フレンド「${userCheck.rows[0].username}」とお互いにフレンドになりました。` });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 4. フレンド一覧取得処理
+app.get('/api/friends', async (req, res) => {
+    const { userId } = req.query;
+    try {
+        const result = await db.execute({
+            sql: "SELECT u.user_id, u.username FROM friends f JOIN users u ON f.friend_id = u.user_id WHERE f.user_id = ?",
+            args: [userId]
+        });
+        res.json({ success: true, friends: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 5. グループ作成API
+app.post('/api/groups/create', async (req, res) => {
+    const { groupName, memberIds } = req.body; // memberIds は作成者を含む配列
+    if (!groupName || !memberIds || memberIds.length === 0) {
+        return res.json({ success: false, message: "グループ名またはメンバー情報が不足しています。" });
+    }
+    const groupId = 'group_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    try {
+        await db.execute({
+            sql: "INSERT INTO groups (group_id, group_name) VALUES (?, ?)",
+            args: [groupId, groupName]
+        });
+        for (const uId of memberIds) {
+            await db.execute({
+                sql: "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)",
+                args: [groupId, uId]
+            });
+        }
+        res.json({ success: true, message: `グループ「${groupName}」を作成しました。`, groupId });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 6. 参加中グループ一覧取得API
+app.get('/api/groups', async (req, res) => {
+    const { userId } = req.query;
+    try {
+        const result = await db.execute({
+            sql: "SELECT g.group_id, g.group_name FROM group_members gm JOIN groups g ON gm.group_id = g.group_id WHERE gm.user_id = ?",
+            args: [userId]
+        });
+        res.json({ success: true, groups: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// --- Socket.io リアルタイム通信ロジック ---
+io.on('connection', (socket) => {
+    
+    // チャンネル（ルーム）への参加処理
+    socket.on('join_channel', async (data) => {
+        const { myId, friendId, groupId } = data;
+        let roomId = '';
+
+        if (groupId) {
+            // グループチャットの場合
+            roomId = groupId;
+        } else if (myId && friendId) {
+            // 既存の1対1チャットの場合のルームID決定
+            roomId = [myId, friendId].sort().join('_');
+        } else {
+            return;
+        }
+
+        socket.join(roomId);
+
+        try {
+            // メッセージ履歴を取得（各メッセージの既読数、自分が既読したかどうかも合わせて取得）
+            const result = await db.execute({
+                sql: `SELECT m.*, 
+                      (SELECT COUNT(*) FROM message_reads r WHERE r.message_id = m.id) as read_count,
+                      EXISTS(SELECT 1 FROM message_reads r WHERE r.message_id = m.id AND r.user_id = ?) as my_read
+                      FROM messages m WHERE m.channel = ? ORDER BY m.id ASC LIMIT 100`,
+                args: [myId, roomId]
+            });
+
+            // 履歴に含まれる、他人が送信した未読メッセージをまとめて既読化
+            const unreadMessages = result.rows.filter(row => row.name !== data.myName && !row.my_read && !row.is_deleted);
+            if (unreadMessages.length > 0) {
+                for (const msg of unreadMessages) {
+                    await db.execute({
+                        sql: "INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)",
+                        args: [msg.id, myId]
+                    });
+                }
+                // ルーム全体に既読状態の更新を通知
+                io.to(roomId).emit('messages_read_update', { roomId, userId: myId });
+                
+                // 再取得して最新の情報をクライアントに送る
+                const updatedResult = await db.execute({
+                    sql: `SELECT m.*, 
+                          (SELECT COUNT(*) FROM message_reads r WHERE r.message_id = m.id) as read_count
+                          FROM messages m WHERE m.channel = ? ORDER BY m.id ASC LIMIT 100`,
+                    args: [roomId]
+                });
+                socket.emit('load_history', updatedResult.rows);
+            } else {
+                socket.emit('load_history', result.rows);
+            }
+
+        } catch (err) {
+            console.error("データ取得失敗:", err);
+        }
+    });
+
+    // メッセージ送信ロジック（構造は維持し、グループチャット・既読管理に対応）
+    socket.on('send_message', async (msgData) => {
+        const { myId, friendId, groupId, name, avatar, color, text, timestamp } = msgData;
+        
+        let roomId = '';
+        if (groupId) {
+            roomId = groupId;
+        } else if (myId && friendId) {
+            roomId = [myId, friendId].sort().join('_');
+        } else {
+            return;
+        }
+
+        try {
+            const result = await db.execute({
+                sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                args: [roomId, name, avatar, color, text, timestamp]
+            });
+            
+            const insertId = Number(result.lastInsertRowid);
+
+            // 送信者は自動的に既読にする
+            await db.execute({
+                sql: "INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)",
+                args: [insertId, myId]
+            });
+
+            io.to(roomId).emit('receive_message', {
+                id: insertId,
+                channel: roomId,
+                name: name,
+                avatar: avatar,
+                color: color,
+                text: text,
+                timestamp: timestamp,
+                is_deleted: 0,
+                read_count: 1
+            });
+        } catch (err) {
+            console.error("データ保存失敗:", err);
+        }
+    });
+
+    // メッセージ既読通知処理
+    socket.on('mark_as_read', async (data) => {
+        const { roomId, userId } = data;
+        try {
+            // 当該ルーム内の、自分が送信していない既読ではないメッセージを取得
+            const msgs = await db.execute({
+                sql: "SELECT id FROM messages WHERE channel = ? AND name != (SELECT username FROM users WHERE user_id = ?)",
+                args: [roomId, userId]
+            });
+            
+            let updated = false;
+            for (const row of msgs.rows) {
+                const res = await db.execute({
+                    sql: "INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)",
+                    args: [row.id, userId]
+                });
+                if (res.rowsAffected > 0) updated = true;
+            }
+
+            if (updated) {
+                io.to(roomId).emit('messages_read_update', { roomId, userId });
+            }
+        } catch (err) {
+            console.error("既読処理失敗:", err);
+        }
+    });
+
+    // 送信取り消し処理
+    socket.on('unsend_message', async (data) => {
+        const { messageId, roomId } = data;
+        try {
+            await db.execute({
+                sql: "UPDATE messages SET is_deleted = 1 WHERE id = ?",
+                args: [messageId]
+            });
+            // 該当ルーム内の全員に取り消しを通知
+            io.to(roomId).emit('message_unsend_success', { messageId });
+        } catch (err) {
+            console.error("送信取り消し失敗:", err);
+        }
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
