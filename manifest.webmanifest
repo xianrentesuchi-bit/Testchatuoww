@@ -1,0 +1,18 @@
+// manifest.webmanifest
+{
+    "name": "SenninChat",
+    "short_name": "SenninChat",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0b57d0",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsrounded/chat/default/48px.svg",
+            "sizes": "48x48",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}
