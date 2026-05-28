@@ -6,6 +6,13 @@
     <title>SenninChat - メイン</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0b57d0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SenninChat">
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
     
     <style>
         :root {
@@ -921,6 +928,19 @@
 
         // 初回ロード実行
         loadFriends();
+    </script>
+    <script>
+        // PWA Service Worker 登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    await navigator.serviceWorker.register('/sw.js');
+                    console.log('Service Worker 登録成功');
+                } catch (err) {
+                    console.error('Service Worker 登録失敗', err);
+                }
+            });
+        }
     </script>
 </body>
 </html>
