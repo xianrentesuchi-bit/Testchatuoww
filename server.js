@@ -164,9 +164,19 @@ io.on('connection', (socket) => {
                 args: [roomId]
             });
             socket.emit('load_history', result.rows);
+            // クライアント側の localStorage キャッシュを更新させるためにデータを送信
+            socket.emit('save_history_cache', { roomId: roomId, rows: result.rows });
         } catch (err) {
             console.error("データ取得失敗:", err);
         }
+    });
+
+    // キャッシュ存在時にデータベースの読み込みを行わずにルーム参加のみ処理するイベント
+    socket.on('join_channel_silent', (data) => {
+        const { myId, friendId } = data;
+        if (!myId || !friendId) return;
+        const roomId = [myId, friendId].sort().join('_');
+        socket.join(roomId);
     });
 
     socket.on('send_message', async (msgData) => {
@@ -176,19 +186,23 @@ io.on('connection', (socket) => {
         // 保存用・通信用に共通のルームIDを決定
         const roomId = [myId, friendId].sort().join('_');
 
+        // 【最適化】メッセージをまず即座に WebSocket でブロードキャスト送信（先行通知）
+        io.to(roomId).emit('receive_message', {
+            channel: roomId,
+            myId: myId,
+            friendId: friendId,
+            name: name,
+            avatar: avatar,
+            color: color,
+            text: text,
+            timestamp: timestamp
+        });
+
+        // 配信処理が完了した後に、非同期でデータベースへの保存を実行
         try {
             await db.execute({
                 sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                 args: [roomId, name, avatar, color, text, timestamp]
-            });
-
-            io.to(roomId).emit('receive_message', {
-                channel: roomId,
-                name: name,
-                avatar: avatar,
-                color: color,
-                text: text,
-                timestamp: timestamp
             });
         } catch (err) {
             console.error("データ保存失敗:", err);
