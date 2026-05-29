@@ -203,6 +203,49 @@ io.on('connection', (socket) => {
             }
         }
     });
+
+    // 投稿メッセージの「編集」要求の処理を追加
+    socket.on('edit_message', async (data) => {
+        const { id, channel, text } = data;
+        if (!id || !channel || !text) return;
+
+        try {
+            await db.execute({
+                sql: "UPDATE messages SET text = ? WHERE id = ? AND channel = ?",
+                args: [text, id, channel]
+            });
+
+            // 更新したレコードを再取得して全クライアントへブロードキャスト
+            const result = await db.execute({
+                sql: "SELECT * FROM messages WHERE id = ?",
+                args: [id]
+            });
+
+            if (result.rows.length > 0) {
+                io.to(channel).emit('message_updated', result.rows[0]);
+            }
+        } catch (err) {
+            console.error("メッセージ編集失敗:", err);
+        }
+    });
+
+    // 投稿メッセージの「削除」要求の処理を追加
+    socket.on('delete_message', async (data) => {
+        const { id, channel } = data;
+        if (!id || !channel) return;
+
+        try {
+            await db.execute({
+                sql: "DELETE FROM messages WHERE id = ? AND channel = ?",
+                args: [id, channel]
+            });
+
+            // 削除されたメッセージIDを全クライアントに通知
+            io.to(channel).emit('message_deleted', { id, channel });
+        } catch (err) {
+            console.error("メッセージ削除失敗:", err);
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;
