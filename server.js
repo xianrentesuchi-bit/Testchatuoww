@@ -43,21 +43,6 @@ async function initDB() {
             timestamp TEXT NOT NULL
         )
     `);
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS message_reactions (
-            message_id INTEGER NOT NULL,
-            user_id TEXT NOT NULL,
-            reaction_type TEXT NOT NULL,
-            PRIMARY KEY (message_id, user_id)
-        )
-    `);
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS message_reads (
-            message_id INTEGER NOT NULL,
-            user_id TEXT NOT NULL,
-            PRIMARY KEY (message_id, user_id)
-        )
-    `);
 }
 initDB().catch(console.error);
 
@@ -159,12 +144,8 @@ io.on('connection', (socket) => {
 
         try {
             const result = await db.execute({
-                sql: `SELECT m.*, 
-                      (SELECT COUNT(*) FROM message_reactions WHERE message_id = m.id) as reaction_count,
-                      (SELECT COUNT(*) FROM message_reactions WHERE message_id = m.id AND user_id = ?) as my_reaction,
-                      (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id = ?) as is_read
-                      FROM messages m WHERE m.channel = ? ORDER BY m.id ASC LIMIT 100`,
-                args: [myId, friendId, roomId]
+                sql: "SELECT * FROM messages WHERE channel = ? ORDER BY id ASC LIMIT 100",
+                args: [roomId]
             });
             socket.emit('load_history', result.rows);
         } catch (err) {
@@ -194,10 +175,7 @@ io.on('connection', (socket) => {
                 avatar: avatar,
                 color: color,
                 text: text,
-                timestamp: timestamp,
-                reaction_count: 0,
-                my_reaction: 0,
-                is_read: 0
+                timestamp: timestamp
             };
 
             io.to(roomId).emit('receive_message', broadcastData);
@@ -218,63 +196,11 @@ io.on('connection', (socket) => {
                     avatar: avatar,
                     color: color,
                     text: text,
-                    timestamp: timestamp,
-                    reaction_count: 0,
-                    my_reaction: 0,
-                    is_read: 0
+                    timestamp: timestamp
                 });
             } catch (innerErr) {
                 console.error("最優先DB保存失敗:", innerErr);
             }
-        }
-    });
-
-    socket.on('toggle_reaction', async (data) => {
-        const { messageId, userId, roomId } = data;
-        if (!messageId || !userId) return;
-
-        try {
-            const check = await db.execute({
-                sql: "SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ?",
-                args: [messageId, userId]
-            });
-
-            if (check.rows.length > 0) {
-                await db.execute({
-                    sql: "DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?",
-                    args: [messageId, userId]
-                });
-            } else {
-                await db.execute({
-                    sql: "INSERT INTO message_reactions (message_id, user_id, reaction_type) VALUES (?, ?, ?)",
-                    args: [messageId, userId, 'default']
-                });
-            }
-
-            const countResult = await db.execute({
-                sql: "SELECT COUNT(*) as count FROM message_reactions WHERE message_id = ?",
-                args: [messageId]
-            });
-            const count = countResult.rows[0].count;
-
-            io.to(roomId).emit('reaction_updated', { messageId, count, userId });
-        } catch (err) {
-            console.error("リアクション処理失敗:", err);
-        }
-    });
-
-    socket.on('mark_as_read', async (data) => {
-        const { messageId, userId, roomId } = data;
-        if (!messageId || !userId) return;
-
-        try {
-            await db.execute({
-                sql: "INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)",
-                args: [messageId, userId]
-            });
-            io.to(roomId).emit('message_read', { messageId, userId });
-        } catch (err) {
-            console.error("既読処理失敗:", err);
         }
     });
 });
