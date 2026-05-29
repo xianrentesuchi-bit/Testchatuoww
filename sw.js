@@ -13,6 +13,11 @@ event.waitUntil(
 caches.open(CACHE_NAME)
 .then(cache => cache.addAll(urlsToCache))
 );
+self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', event => {
@@ -26,6 +31,37 @@ event.respondWith(
         .then(response => {  
             return response || fetch(event.request);  
         })  
+);
+
+});
+
+self.addEventListener('push', event => {
+
+let data = {};
+
+if (event.data) {  
+    data = event.data.json();  
+}  
+
+const title = data.title || 'SenninChat';  
+const options = {  
+    body: data.body || '新しい通知があります',  
+    icon: '/android-icon-192x192.png',  
+    badge: '/android-icon-192x192.png'  
+};  
+
+event.waitUntil(  
+    self.registration.showNotification(title, options)  
+);
+
+});
+
+self.addEventListener('notificationclick', event => {
+
+event.notification.close();
+
+event.waitUntil(
+clients.openWindow('/')
 );
 
 });
