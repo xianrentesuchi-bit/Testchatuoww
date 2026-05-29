@@ -675,7 +675,10 @@
                         li.classList.add('chat-item');
                         li.setAttribute('data-friend-id', f.user_id);
                         if (currentChannelName === f.username) li.classList.add('active');
-                        li.onclick = function() { switchChannel(this, f.username, initial, color, f.user_id); };
+                        
+                        li.addEventListener('click', function() { 
+                            switchChannel(this, f.username, initial, color, f.user_id); 
+                        });
                         
                         const badgeCount = unreadCounts[f.user_id] || 0;
                         const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
@@ -1030,6 +1033,8 @@
                 cachedRows.forEach(row => {
                     appendMessageElement(row);
                 });
+            } else {
+                messageArea.innerHTML = '';
             }
             
             socket.emit('join_channel', {
