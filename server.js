@@ -11,7 +11,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-//うおw最近冷笑大好き
 const GAS_WEBAPP_URL = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwYsl3issVM1SgFyeuRVCITmIfex6kc7lmuiRXVpxbD195ctM0aAsyUxBV_NZxVz9UH/exec";
 const db = createClient({
     url: process.env.TURSO_DATABASE_URL || "libsql://senninchat-senninch.aws-ap-northeast-1.turso.io",
@@ -47,7 +46,6 @@ async function initDB() {
 }
 initDB().catch(console.error);
 
-
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -79,7 +77,6 @@ app.post('/api/register', async (req, res) => {
         const result = await gasRes.json();
 
         if (result.success) {
-            // 登録成功時、Turso側にユーザー情報を同期保存
             await db.execute({
                 sql: "INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
                 args: [result.userId, result.username]
@@ -100,7 +97,6 @@ app.post('/api/friends/add', async (req, res) => {
         return res.json({ success: false, message: "自分自身をフレンドに追加することはできません。" });
     }
     try {
-        // 追加対象のフレンドがTursoのユーザーリストに存在するかチェック
         const userCheck = await db.execute({
             sql: "SELECT username FROM users WHERE user_id = ?",
             args: [friendId]
@@ -109,13 +105,11 @@ app.post('/api/friends/add', async (req, res) => {
             return res.json({ success: false, message: "該当する固有IDのユーザーがチャットシステムに見つかりません。" });
         }
 
-        // 自分から相手へのフレンド関係を保存
         await db.execute({
             sql: "INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)",
             args: [userId, friendId]
         });
 
-        // 相手から自分へのフレンド関係も同時に保存（お互いにフレンド化）
         await db.execute({
             sql: "INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)",
             args: [friendId, userId]
@@ -140,11 +134,11 @@ app.get('/api/friends', async (req, res) => {
     }
 });
 
-
 io.on('connection', (socket) => {
     socket.on('join_channel', async (data) => {
         const { myId, friendId } = data;
         if (!myId || !friendId) return;
+
         const roomId = [myId, friendId].sort().join('_');
         socket.join(roomId);
 
@@ -154,17 +148,9 @@ io.on('connection', (socket) => {
                 args: [roomId]
             });
             socket.emit('load_history', result.rows);
-            socket.emit('save_history_cache', { roomId: roomId, rows: result.rows });
         } catch (err) {
             console.error("データ取得失敗:", err);
         }
-    });
-
-    socket.on('join_channel_silent', (data) => {
-        const { myId, friendId } = data;
-        if (!myId || !friendId) return;
-        const roomId = [myId, friendId].sort().join('_');
-        socket.join(roomId);
     });
 
     socket.on('send_message', async (msgData) => {
@@ -173,24 +159,49 @@ io.on('connection', (socket) => {
 
         const roomId = [myId, friendId].sort().join('_');
 
-        io.to(roomId).emit('receive_message', {
-            channel: roomId,
-            myId: myId,
-            friendId: friendId,
-            name: name,
-            avatar: avatar,
-            color: color,
-            text: text,
-            timestamp: timestamp
-        });
-
         try {
-            await db.execute({
+            const result = await db.execute({
                 sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                 args: [roomId, name, avatar, color, text, timestamp]
             });
+
+            const insertedId = Number(result.lastInsertRowid);
+            const broadcastData = {
+                id: insertedId,
+                channel: roomId,
+                myId: myId,
+                friendId: friendId,
+                name: name,
+                avatar: avatar,
+                color: color,
+                text: text,
+                timestamp: timestamp
+            };
+
+            io.to(roomId).emit('receive_message', broadcastData);
+            io.emit('receive_message', broadcastData);
         } catch (err) {
             console.error("データ保存失敗:", err);
+            try {
+                const fallbackResult = await db.execute({
+                    sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+                    args: [roomId, name, avatar, color, text, timestamp]
+                });
+                const insertedId = Number(fallbackResult.lastInsertRowid);
+                io.emit('receive_message', {
+                    id: insertedId,
+                    channel: roomId,
+                    myId: myId,
+                    friendId: friendId,
+                    name: name,
+                    avatar: avatar,
+                    color: color,
+                    text: text,
+                    timestamp: timestamp
+                });
+            } catch (innerErr) {
+                console.error("最優先DB保存失敗:", innerErr);
+            }
         }
     });
 });
