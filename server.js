@@ -43,6 +43,14 @@ async function initDB() {
             timestamp TEXT NOT NULL
         )
     `);
+    // 新規追加: グループ管理用テーブル
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS chat_groups (
+            group_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            creator_id TEXT NOT NULL
+        )
+    `);
 }
 initDB().catch(console.error);
 
@@ -134,12 +142,47 @@ app.get('/api/friends', async (req, res) => {
     }
 });
 
+// 新規追加: グループ作成用API
+app.post('/api/groups/create', async (req, res) => {
+    const { name, creatorId } = req.body;
+    if (!name || !creatorId) {
+        return res.json({ success: false, message: "グループ名または作成者IDが不足しています。" });
+    }
+    const groupId = 'group_' + Math.random().toString(36).substring(2, 15);
+    try {
+        await db.execute({
+            sql: "INSERT INTO chat_groups (group_id, name, creator_id) VALUES (?, ?, ?)",
+            args: [groupId, name, creatorId]
+        });
+        res.json({ success: true, message: `グループ「${name}」を作成しました。` });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 新規追加: グループ一覧取得用API
+app.get('/api/groups', async (req, res) => {
+    try {
+        const result = await db.execute("SELECT group_id, name, creator_id FROM chat_groups");
+        res.json({ success: true, groups: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 io.on('connection', (socket) => {
     socket.on('join_channel', async (data) => {
-        const { myId, friendId } = data;
-        if (!myId || !friendId) return;
+        const { myId, friendId, isGroup, groupId } = data;
+        let roomId = '';
 
-        const roomId = [myId, friendId].sort().join('_');
+        if (isGroup) {
+            if (!groupId) return;
+            roomId = groupId;
+        } else {
+            if (!myId || !friendId) return;
+            roomId = [myId, friendId].sort().join('_');
+        }
+
         socket.join(roomId);
 
         try {
@@ -154,10 +197,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_message', async (msgData) => {
-        const { myId, friendId, name, avatar, color, text, timestamp } = msgData;
-        if (!myId || !friendId) return;
+        const { channel, myId, friendId, name, avatar, color, text, timestamp } = msgData;
+        if (!channel) return;
 
-        const roomId = [myId, friendId].sort().join('_');
+        // channelに渡された値（DMの合体ID、またはgroup_から始まるグループID）をそのままroomIdとして扱う
+        const roomId = channel;
 
         try {
             const result = await db.execute({
@@ -204,7 +248,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 投稿メッセージの「編集」要求の処理を追加
+    // 投稿メッセージの「編集」要求の処理
     socket.on('edit_message', async (data) => {
         const { id, channel, text } = data;
         if (!id || !channel || !text) return;
@@ -215,7 +259,6 @@ io.on('connection', (socket) => {
                 args: [text, id, channel]
             });
 
-            // 更新したレコードを再取得して全クライアントへブロードキャスト
             const result = await db.execute({
                 sql: "SELECT * FROM messages WHERE id = ?",
                 args: [id]
@@ -229,7 +272,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 投稿メッセージの「削除」要求の処理を追加
+    // 投稿メッセージの「削除」要求の処理
     socket.on('delete_message', async (data) => {
         const { id, channel } = data;
         if (!id || !channel) return;
@@ -240,7 +283,6 @@ io.on('connection', (socket) => {
                 args: [id, channel]
             });
 
-            // 削除されたメッセージIDを全クライアントに通知
             io.to(channel).emit('message_deleted', { id, channel });
         } catch (err) {
             console.error("メッセージ削除失敗:", err);
