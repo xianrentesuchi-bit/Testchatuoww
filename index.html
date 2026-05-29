@@ -313,6 +313,16 @@
             color: var(--text-sub);
         }
 
+        .msg-status {
+            font-size: 0.7rem;
+            color: var(--text-sub);
+            align-self: flex-end;
+        }
+
+        .message-group.sent .msg-status {
+            align-self: flex-start;
+        }
+
         .msg-text {
             font-size: 0.95rem;
             line-height: 1.45;
@@ -380,6 +390,12 @@
         .reaction-badge:hover {
             border-color: var(--border-color);
             background-color: #e8eaed;
+        }
+
+        .reaction-badge.active {
+            background-color: #d3e3fd;
+            border-color: #a8c7fa;
+            color: #041e49;
         }
 
         .input-container {
@@ -749,8 +765,12 @@
         }
 
         function appendMessageElement(data) {
+            let existingMsg = document.querySelector(`.message-group[data-msg-id="${data.id}"]`);
+            if (existingMsg) return;
+
             const msgGroup = document.createElement('div');
             msgGroup.classList.add('message-group');
+            msgGroup.setAttribute('data-msg-id', data.id);
             
             let displayFormatedText = escapeHTML(data.text);
             let replyHtml = '';
@@ -764,7 +784,12 @@
                 displayFormatedText = escapeHTML(plainText);
             }
             
+            const reactionText = data.name === currentUser.username ? '👏' : '👍';
+            const reactionActive = data.my_reaction === 1 ? 'active' : '';
+
+            let statusHtml = '';
             if (data.name === currentUser.username) {
+                statusHtml = `<span class="msg-status">${data.is_read === 1 ? '既読' : '未読'}</span>`;
                 msgGroup.classList.add('sent');
                 msgGroup.innerHTML = `
                     <div class="msg-avatar" style="background-color: var(--brand-color);">自分</div>
@@ -776,9 +801,10 @@
                         ${replyHtml}
                         <div class="msg-text">${displayFormatedText}</div>
                         <div class="msg-actions">
-                            <div class="reaction-badge" onclick="toggleReaction(this)">👏 <span>0</span></div>
+                            <div class="reaction-badge ${reactionActive}" onclick="sendReaction(${data.id})">${reactionText} <span>${data.reaction_count || 0}</span></div>
                         </div>
                     </div>
+                    ${statusHtml}
                 `;
             } else {
                 msgGroup.classList.add('received');
@@ -792,7 +818,7 @@
                         ${replyHtml}
                         <div class="msg-text">${displayFormatedText}</div>
                         <div class="msg-actions">
-                            <div class="reaction-badge" onclick="toggleReaction(this)">👍 <span>0</span></div>
+                            <div class="reaction-badge ${reactionActive}" onclick="sendReaction(${data.id})">${reactionText} <span>${data.reaction_count || 0}</span></div>
                         </div>
                     </div>
                 `;
@@ -818,7 +844,10 @@
             let mergedRows = [...localRows];
 
             serverRows.forEach(sRow => {
-                if (!mergedRows.some(lRow => lRow.id === sRow.id)) {
+                const idx = mergedRows.findIndex(lRow => lRow.id === sRow.id);
+                if (idx !== -1) {
+                    mergedRows[idx] = sRow;
+                } else {
                     mergedRows.push(sRow);
                 }
             });
@@ -849,12 +878,19 @@
 
         socket.on('receive_message', (msgData) => {
             if (msgData.channel === currentRoomId) {
+                if (msgData.myId !== currentUser.userId) {
+                    socket.emit('mark_as_read', { myId: currentUser.userId, friendId: currentFriendId });
+                    msgData.is_read = 1;
+                }
                 appendMessageElement(msgData);
                 let currentCache = getLocalCache(currentRoomId);
-                if (!currentCache.some(row => row.id === msgData.id)) {
+                const idx = currentCache.findIndex(row => row.id === msgData.id);
+                if (idx !== -1) {
+                    currentCache[idx] = msgData;
+                } else {
                     currentCache.push(msgData);
-                    setLocalCache(currentRoomId, currentCache);
                 }
+                setLocalCache(currentRoomId, currentCache);
             } else {
                 if (msgData.myId !== currentUser.userId) {
                     updateUnreadCount(msgData.myId, 1);
@@ -868,6 +904,60 @@
                 });
             }
         });
+
+        socket.on('messages_read', (data) => {
+            if (data.channel === currentRoomId) {
+                let currentCache = getLocalCache(currentRoomId);
+                currentCache.forEach(row => {
+                    if (row.name === currentUser.username) {
+                        row.is_read = 1;
+                    }
+                });
+                setLocalCache(currentRoomId, currentCache);
+
+                document.querySelectorAll('.message-group.sent').forEach(el => {
+                    const statusEl = el.querySelector('.msg-status');
+                    if (statusEl) statusEl.textContent = '既読';
+                });
+            }
+        });
+
+        socket.on('reaction_updated', (data) => {
+            if (currentRoomId === [currentUser.userId, currentFriendId].sort().join('_')) {
+                let currentCache = getLocalCache(currentRoomId);
+                const idx = currentCache.findIndex(row => row.id === data.messageId);
+                if (idx !== -1) {
+                    currentCache[idx].reaction_count = data.count;
+                    if (data.userId === currentUser.userId) {
+                        currentCache[idx].my_reaction = data.active ? 1 : 0;
+                    }
+                    setLocalCache(currentRoomId, currentCache);
+                }
+
+                const msgGroup = document.querySelector(`.message-group[data-msg-id="${data.messageId}"]`);
+                if (msgGroup) {
+                    const badge = msgGroup.querySelector('.reaction-badge');
+                    if (badge) {
+                        badge.querySelector('span').textContent = data.count;
+                        if (data.userId === currentUser.userId) {
+                            if (data.active) {
+                                badge.classList.add('active');
+                            } else {
+                                badge.classList.remove('active');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        function sendReaction(messageId) {
+            socket.emit('toggle_reaction', {
+                messageId: messageId,
+                userId: currentUser.userId,
+                roomId: currentRoomId
+            });
+        }
 
         function updateUnreadCount(friendId, amount) {
             if (amount === 0) {
@@ -949,9 +1039,6 @@
         }
 
         function toggleReaction(element) {
-            const countSpan = element.querySelector('span');
-            let count = parseInt(countSpan.textContent);
-            countSpan.textContent = count + 1;
         }
 
         function escapeHTML(str) {
