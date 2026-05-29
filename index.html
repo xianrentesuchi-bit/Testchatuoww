@@ -803,6 +803,30 @@
             border-radius: 4px;
         }
 
+        /* 追加機能：未読メッセージ区切り線スタイル */
+        .unread-separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #b3261e;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 16px 0;
+            width: 100%;
+        }
+        .unread-separator::before,
+        .unread-separator::after {
+            content: '';
+            flex: 1;
+            border-bottom: 2px dashed #b3261e;
+        }
+        .unread-separator::before {
+            margin-right: 12px;
+        }
+        .unread-separator::after {
+            margin-left: 12px;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 256px;
@@ -1606,7 +1630,19 @@
                 `;
                 messageArea.appendChild(div);
             } else {
-                mergedRows.forEach(row => {
+                // 現在のチャンネル/トークルームにおける未読件数を算出
+                const badgeKey = isGroupMode ? currentRoomId : currentFriendId;
+                const unreadCount = unreadCounts[badgeKey] || 0;
+                const unreadStartIndex = mergedRows.length - unreadCount;
+
+                mergedRows.forEach((row, index) => {
+                    // 未読メッセージが開始する直前に赤線・区切りテキストを挿入
+                    if (unreadCount > 0 && index === unreadStartIndex) {
+                        const separator = document.createElement('div');
+                        separator.className = 'unread-separator';
+                        separator.textContent = '未読のメッセージ';
+                        messageArea.appendChild(separator);
+                    }
                     appendMessageElement(row);
                 });
             }
@@ -1752,8 +1788,7 @@
             chatInput.disabled = false;
             statusDot.style.display = 'block';
 
-            updateUnreadCount(targetId, 0, isGroupMode);
-
+            // 読み込み前に、現在の未読件数を元に描画処理を行うため、カウントクリアは描画後(socket.emit直前)に行う
             document.getElementById('historyLoading').classList.add('show');
 
             let cachedRows = getLocalCache(currentRoomId);
@@ -1761,11 +1796,25 @@
                 const savedLoading = historyLoading.cloneNode(true);
                 messageArea.innerHTML = '';
                 messageArea.appendChild(savedLoading);
-                cachedRows.forEach(row => {
+                
+                const badgeKey = isGroupMode ? currentRoomId : currentFriendId;
+                const unreadCount = unreadCounts[badgeKey] || 0;
+                const unreadStartIndex = cachedRows.length - unreadCount;
+
+                cachedRows.forEach((row, index) => {
+                    if (unreadCount > 0 && index === unreadStartIndex) {
+                        const separator = document.createElement('div');
+                        separator.className = 'unread-separator';
+                        separator.textContent = '未読のメッセージ';
+                        messageArea.appendChild(separator);
+                    }
                     appendMessageElement(row);
                 });
             }
             
+            // チャンネル内のメッセージが既読となったため、バッジカウント数をリセット
+            updateUnreadCount(targetId, 0, isGroupMode);
+
             socket.emit('join_channel', {
                 myId: currentUser.userId,
                 friendId: currentFriendId,
