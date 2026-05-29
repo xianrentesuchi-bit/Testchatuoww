@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -41,12 +40,19 @@ async function initDB() {
             avatar TEXT NOT NULL,
             color TEXT NOT NULL,
             text TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            is_read INTEGER DEFAULT 0
+            timestamp TEXT NOT NULL
         )
     `);
     await db.execute(`
-        CREATE TABLE IF NOT EXISTS reactions (
+        CREATE TABLE IF NOT EXISTS message_reactions (
+            message_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            reaction_type TEXT NOT NULL,
+            PRIMARY KEY (message_id, user_id)
+        )
+    `);
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS message_reads (
             message_id INTEGER NOT NULL,
             user_id TEXT NOT NULL,
             PRIMARY KEY (message_id, user_id)
@@ -152,42 +158,17 @@ io.on('connection', (socket) => {
         socket.join(roomId);
 
         try {
-            await db.execute({
-                sql: "UPDATE messages SET is_read = 1 WHERE channel = ? AND name != (SELECT username FROM users WHERE user_id = ?)",
-                args: [roomId, myId]
-            });
-            io.to(roomId).emit('messages_read', { channel: roomId });
-
             const result = await db.execute({
-                sql: `
-                    SELECT m.*, COUNT(r.user_id) AS reaction_count, 
-                    MAX(CASE WHEN r.user_id = ? THEN 1 ELSE 0 END) AS my_reaction
-                    FROM messages m
-                    LEFT JOIN reactions r ON m.id = r.message_id
-                    WHERE m.channel = ?
-                    GROUP BY m.id
-                    ORDER BY m.id ASC LIMIT 100
-                `,
-                args: [myId, roomId]
+                sql: `SELECT m.*, 
+                      (SELECT COUNT(*) FROM message_reactions WHERE message_id = m.id) as reaction_count,
+                      (SELECT COUNT(*) FROM message_reactions WHERE message_id = m.id AND user_id = ?) as my_reaction,
+                      (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id = ?) as is_read
+                      FROM messages m WHERE m.channel = ? ORDER BY m.id ASC LIMIT 100`,
+                args: [myId, friendId, roomId]
             });
             socket.emit('load_history', result.rows);
         } catch (err) {
             console.error("データ取得失敗:", err);
-        }
-    });
-
-    socket.on('mark_as_read', async (data) => {
-        const { myId, friendId } = data;
-        if (!myId || !friendId) return;
-        const roomId = [myId, friendId].sort().join('_');
-        try {
-            await db.execute({
-                sql: "UPDATE messages SET is_read = 1 WHERE channel = ? AND name != (SELECT username FROM users WHERE user_id = ?)",
-                args: [roomId, myId]
-            });
-            io.to(roomId).emit('messages_read', { channel: roomId });
-        } catch (err) {
-            console.error("既読更新失敗:", err);
         }
     });
 
@@ -199,7 +180,7 @@ io.on('connection', (socket) => {
 
         try {
             const result = await db.execute({
-                sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                 args: [roomId, name, avatar, color, text, timestamp]
             });
 
@@ -214,9 +195,9 @@ io.on('connection', (socket) => {
                 color: color,
                 text: text,
                 timestamp: timestamp,
-                is_read: 0,
                 reaction_count: 0,
-                my_reaction: 0
+                my_reaction: 0,
+                is_read: 0
             };
 
             io.to(roomId).emit('receive_message', broadcastData);
@@ -224,7 +205,7 @@ io.on('connection', (socket) => {
             console.error("データ保存失敗:", err);
             try {
                 const fallbackResult = await db.execute({
-                    sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                    sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                     args: [roomId, name, avatar, color, text, timestamp]
                 });
                 const insertedId = Number(fallbackResult.lastInsertRowid);
@@ -238,9 +219,9 @@ io.on('connection', (socket) => {
                     color: color,
                     text: text,
                     timestamp: timestamp,
-                    is_read: 0,
                     reaction_count: 0,
-                    my_reaction: 0
+                    my_reaction: 0,
+                    is_read: 0
                 });
             } catch (innerErr) {
                 console.error("最優先DB保存失敗:", innerErr);
@@ -254,39 +235,46 @@ io.on('connection', (socket) => {
 
         try {
             const check = await db.execute({
-                sql: "SELECT 1 FROM reactions WHERE message_id = ? AND user_id = ?",
+                sql: "SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ?",
                 args: [messageId, userId]
             });
 
-            let active = false;
             if (check.rows.length > 0) {
                 await db.execute({
-                    sql: "DELETE FROM reactions WHERE message_id = ? AND user_id = ?",
+                    sql: "DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?",
                     args: [messageId, userId]
                 });
-                active = false;
             } else {
                 await db.execute({
-                    sql: "INSERT INTO reactions (message_id, user_id) VALUES (?, ?)",
-                    args: [messageId, userId]
+                    sql: "INSERT INTO message_reactions (message_id, user_id, reaction_type) VALUES (?, ?, ?)",
+                    args: [messageId, userId, 'default']
                 });
-                active = true;
             }
 
             const countResult = await db.execute({
-                sql: "SELECT COUNT(*) AS count FROM reactions WHERE message_id = ?",
+                sql: "SELECT COUNT(*) as count FROM message_reactions WHERE message_id = ?",
                 args: [messageId]
             });
-            const count = Number(countResult.rows[0].count);
+            const count = countResult.rows[0].count;
 
-            io.to(roomId).emit('reaction_updated', {
-                messageId: messageId,
-                count: count,
-                userId: userId,
-                active: active
-            });
+            io.to(roomId).emit('reaction_updated', { messageId, count, userId });
         } catch (err) {
             console.error("リアクション処理失敗:", err);
+        }
+    });
+
+    socket.on('mark_as_read', async (data) => {
+        const { messageId, userId, roomId } = data;
+        if (!messageId || !userId) return;
+
+        try {
+            await db.execute({
+                sql: "INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)",
+                args: [messageId, userId]
+            });
+            io.to(roomId).emit('message_read', { messageId, userId });
+        } catch (err) {
+            console.error("既読処理失敗:", err);
         }
     });
 });
