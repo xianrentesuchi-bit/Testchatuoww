@@ -749,9 +749,8 @@
                 let endX = e.changedTouches[0].clientX;
                 let diffX = startX - endX;
 
-                element.style.transform = ''; // 位置をリセット
+                element.style.transform = ''; 
 
-                // 50px以上左にスワイプされたら返信アクションを発火
                 if (diffX > 50 && !chatInput.disabled) {
                     // 改行などを除外したシンプルなテキストを返信用にする
                     const cleanText = textToReply.replace(/\n/g, ' ').substring(0, 30);
@@ -767,7 +766,6 @@
             const msgGroup = document.createElement('div');
             msgGroup.classList.add('message-group');
             
-            // 返信フォーマットの解析
             let displayFormatedText = escapeHTML(data.text);
             let replyHtml = '';
             const replyRegex = /^（#([\s\S]+?) への返信）\n?/;
@@ -776,7 +774,6 @@
             if (match) {
                 const replyTargetText = match[1];
                 replyHtml = `<div class="reply-container">↩ 返信: ${escapeHTML(replyTargetText)}</div>`;
-                // 本文から返信記法部分をカットして表示
                 const plainText = data.text.replace(replyRegex, '');
                 displayFormatedText = escapeHTML(plainText);
             }
@@ -815,7 +812,7 @@
                 `;
             }
             
-            // スワイプ返信機能をこのメッセージグループに付与（生テキストを渡す）
+        
             enableSwipeToReply(msgGroup, data.text.replace(replyRegex, ''));
 
             messageArea.appendChild(msgGroup);
@@ -845,23 +842,19 @@
             }
         });
 
-        // メッセージ受信時の処理をアップデート
         socket.on('receive_message', (msgData) => {
             if (msgData.channel === currentRoomId) {
                 appendMessageElement(msgData);
-                // 閲覧中のアクティブなルームの履歴キャッシュをリアルタイムに同期更新
                 const cacheKey = `chat_history_${currentRoomId}`;
                 let cached = JSON.parse(localStorage.getItem(cacheKey) || "[]");
                 cached.push(msgData);
                 if (cached.length > 100) cached.shift();
                 localStorage.setItem(cacheKey, JSON.stringify(cached));
             } else {
-                // 開いていないチャットルームからの新着通知（送信者が自分以外の場合のみカウントアップ）
-                if (msgData.myId !== currentUser.userId) {
+                  if (msgData.myId !== currentUser.userId) {
                     updateUnreadCount(msgData.myId, 1);
                     
-                    // 新しいメッセージの通知を端末（ブラウザ）に送る
-                    if ('Notification' in window && Notification.permission === 'granted') {
+                      if ('Notification' in window && Notification.permission === 'granted') {
                         new Notification(`SenninChat: ${msgData.name}`, {
                             body: msgData.text,
                             icon: '/apple-icon-60x60.png'
@@ -871,7 +864,6 @@
             }
         });
 
-        // 未読数を変更・更新する関数
         function updateUnreadCount(friendId, amount) {
             if (amount === 0) {
                 unreadCounts[friendId] = 0;
@@ -879,7 +871,6 @@
                 unreadCounts[friendId] = (unreadCounts[friendId] || 0) + amount;
             }
 
-            // 対応するリストアイテムのDOMを取得してバッジ書き換え
             const item = document.querySelector(`.chat-item[data-friend-id="${friendId}"]`);
             if (item) {
                 let badge = item.querySelector('.badge');
@@ -936,15 +927,12 @@
             chatInput.disabled = false;
             statusDot.style.display = 'block';
 
-            // チャットルームを開いたので未読カウントをリセット
             updateUnreadCount(friendId, 0);
 
-            // --- localStorageを利用したRead回数削減キャッシュ戦略 ---
             const cacheKey = `chat_history_${currentRoomId}`;
             const cachedData = localStorage.getItem(cacheKey);
 
             if (cachedData) {
-                // キャッシュがあればDBアクセスをスキップし即座にUI描画
                 const rows = JSON.parse(cachedData);
                 messageArea.innerHTML = '';
                 if (rows.length === 0) {
@@ -966,13 +954,11 @@
                         appendMessageElement(row);
                     });
                 }
-                // バックグラウンドでサーバーのルーム状態だけ同期
                 socket.emit('join_channel_silent', {
                     myId: currentUser.userId,
                     friendId: currentFriendId
                 });
             } else {
-                // キャッシュがなければ通常通りサーバー（DB）へ履歴リクエストを発行
                 socket.emit('join_channel', {
                     myId: currentUser.userId,
                     friendId: currentFriendId
@@ -980,7 +966,6 @@
             }
         }
 
-        // サーバーから取得した最新履歴データを localStorage にキャッシュ保存するリスナー
         socket.on('save_history_cache', (data) => {
             if (data.roomId) {
                 localStorage.setItem(`chat_history_${data.roomId}`, JSON.stringify(data.rows));
@@ -1008,11 +993,9 @@
             chatInput.focus();
         });
 
-        // 初回ロード実行
         loadFriends();
     </script>
     <script>
-        // PWA Service Worker 登録
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
