@@ -57,14 +57,13 @@
         body {
             display: flex;
             height: 100vh;
-            height: 100dvh; /* 動的ビューポート対応でキーボード表示時の縮小に追従 */
+            height: 100dvh;
             background-color: var(--bg-main);
             color: var(--text-main);
             overflow: hidden;
             position: relative;
         }
 
-        /* --- 左側サイドバー --- */
         .sidebar {
             width: 256px;
             background-color: var(--bg-sidebar);
@@ -187,7 +186,6 @@
             flex-shrink: 0;
         }
 
-        /* --- 通知バッジのスタイル --- */
         .badge {
             background-color: #b3261e;
             color: white;
@@ -200,18 +198,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-left: auto; /* 右端に寄せる */
+            margin-left: auto;
             flex-shrink: 0;
         }
 
-        /* --- 中央メインエリア --- */
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
             background-color: var(--bg-main);
             height: 100%;
-            min-width: 0; /* フレックスアイテムの縮小を許可 */
+            min-width: 0;
         }
 
         .main-header {
@@ -257,7 +254,7 @@
             gap: 12px;
             width: 100%;
             max-width: 85%;
-            touch-action: pan-y; /* スワイプ操作時に上下スクロールを阻害しない */
+            touch-action: pan-y;
             transition: transform 0.15s ease-out;
         }
 
@@ -340,7 +337,6 @@
             border-top-right-radius: 4px;
         }
 
-        /* --- 返信特別UI --- */
         .reply-container {
             font-size: 0.8rem;
             opacity: 0.75;
@@ -389,7 +385,7 @@
         .input-container {
             padding: 0 24px 24px 24px;
             background-color: #f8f9fa;
-            flex-shrink: 0; /* 入力エリアが潰れるのを絶対に防ぐ */
+            flex-shrink: 0;
         }
 
         .input-box {
@@ -415,7 +411,7 @@
             font-size: 0.95rem;
             padding: 8px 4px;
             min-height: 40px;
-            max-height: 140px; /* モバイルでの表示領域確保のため最大高さを微調整 */
+            max-height: 140px;
         }
 
         .input-toolbar {
@@ -489,10 +485,9 @@
             opacity: 1;
         }
 
-        /* --- 画面幅が狭いデバイス（スマートフォンなど）用のレスポンス設定 --- */
         @media (max-width: 768px) {
             .sidebar {
-                width: 72px; /* アイコン表示メインのコンパクト幅に */
+                width: 72px;
                 padding: 8px 4px;
             }
             .logo-area span,
@@ -500,7 +495,7 @@
             .friend-add-box,
             .section-title,
             .chat-item span {
-                display: none !important; /* テキスト表記や入力欄を隠して省スペース化 */
+                display: none !important;
             }
             .logo-area {
                 justify-content: center;
@@ -606,7 +601,10 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // 認証チェック
+        if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+
         const sessionUser = sessionStorage.getItem('chat_user');
         if (!sessionUser) {
             window.location.href = '/account.html';
@@ -615,11 +613,6 @@
 
         document.getElementById('myUsername').textContent = currentUser.username;
         document.getElementById('myUserId').textContent = currentUser.userId;
-
-        // ブラウザ通知の権限リクエスト
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
 
         const socket = io();
         const chatInput = document.getElementById('chatInput');
@@ -635,7 +628,6 @@
         let currentFriendId = '';
         let currentRoomId = '';
 
-        // 各フレンドの未読件数を管理するオブジェクト
         const unreadCounts = {};
 
         function showToast(message) {
@@ -649,7 +641,6 @@
             showToast("固有IDをクリップボードにコピーしました");
         }
 
-        // フレンド一覧読み込み
         async function loadFriends() {
             try {
                 const res = await fetch(`/api/friends?userId=${currentUser.userId}`);
@@ -666,11 +657,10 @@
 
                         const li = document.createElement('li');
                         li.classList.add('chat-item');
-                        li.setAttribute('data-friend-id', f.user_id); // ID特定用のカスタム属性
+                        li.setAttribute('data-friend-id', f.user_id);
                         if (currentChannelName === f.username) li.classList.add('active');
                         li.onclick = function() { switchChannel(this, f.username, initial, color, f.user_id); };
                         
-                        // 通知数を初期描画
                         const badgeCount = unreadCounts[f.user_id] || 0;
                         const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
 
@@ -687,7 +677,6 @@
             }
         }
 
-        // フレンド追加
         async function addFriend() {
             const friendIdInput = document.getElementById('friendIdInput');
             const friendId = friendIdInput.value.trim();
@@ -716,7 +705,6 @@
             chatInput.style.height = chatInput.scrollHeight + 'px';
         });
 
-        // スワイプイベント登録用関数
         function enableSwipeToReply(element, textToReply) {
             let startX = 0;
             let startY = 0;
@@ -735,7 +723,6 @@
                 let diffX = startX - moveX;
                 let diffY = Math.abs(startY - moveY);
 
-                // 横スワイプが優勢かつ左方向へのスワイプの時のみ要素をずらす視覚効果
                 if (diffX > 10 && diffX > diffY) {
                     if (diffX < 80) {
                         element.style.transform = `translateX(-${diffX}px)`;
@@ -749,10 +736,9 @@
                 let endX = e.changedTouches[0].clientX;
                 let diffX = startX - endX;
 
-                element.style.transform = ''; 
+                element.style.transform = '';
 
                 if (diffX > 50 && !chatInput.disabled) {
-                    // 改行などを除外したシンプルなテキストを返信用にする
                     const cleanText = textToReply.replace(/\n/g, ' ').substring(0, 30);
                     chatInput.value = `（#${cleanText} への返信）\n` + chatInput.value.replace(/^（#.+? への返信）\n?/, '');
                     chatInput.dispatchEvent(new Event('input'));
@@ -812,16 +798,35 @@
                 `;
             }
             
-        
             enableSwipeToReply(msgGroup, data.text.replace(replyRegex, ''));
 
             messageArea.appendChild(msgGroup);
             messageArea.scrollTop = messageArea.scrollHeight;
         }
 
-        socket.on('load_history', (rows) => {
+        function getLocalCache(roomId) {
+            const cache = localStorage.getItem(`chat_history_${roomId}`);
+            return cache ? JSON.parse(cache) : [];
+        }
+
+        function setLocalCache(roomId, data) {
+            localStorage.setItem(`chat_history_${roomId}`, JSON.stringify(data));
+        }
+
+        socket.on('load_history', (serverRows) => {
+            let localRows = getLocalCache(currentRoomId);
+            let mergedRows = [...localRows];
+
+            serverRows.forEach(sRow => {
+                if (!mergedRows.some(lRow => lRow.id === sRow.id)) {
+                    mergedRows.push(sRow);
+                }
+            });
+            mergedRows.sort((a, b) => (a.id || 0) - (b.id || 0));
+            setLocalCache(currentRoomId, mergedRows);
+
             messageArea.innerHTML = '';
-            if (rows.length === 0) {
+            if (mergedRows.length === 0) {
                 const initialAvatar = currentChannelName.charAt(0).toUpperCase();
                 messageArea.innerHTML = `
                     <div class="message-group received">
@@ -836,7 +841,7 @@
                     </div>
                 `;
             } else {
-                rows.forEach(row => {
+                mergedRows.forEach(row => {
                     appendMessageElement(row);
                 });
             }
@@ -845,22 +850,22 @@
         socket.on('receive_message', (msgData) => {
             if (msgData.channel === currentRoomId) {
                 appendMessageElement(msgData);
-                const cacheKey = `chat_history_${currentRoomId}`;
-                let cached = JSON.parse(localStorage.getItem(cacheKey) || "[]");
-                cached.push(msgData);
-                if (cached.length > 100) cached.shift();
-                localStorage.setItem(cacheKey, JSON.stringify(cached));
-            } else {
-                  if (msgData.myId !== currentUser.userId) {
-                    updateUnreadCount(msgData.myId, 1);
-                    
-                      if ('Notification' in window && Notification.permission === 'granted') {
-                        new Notification(`SenninChat: ${msgData.name}`, {
-                            body: msgData.text,
-                            icon: '/apple-icon-60x60.png'
-                        });
-                    }
+                let currentCache = getLocalCache(currentRoomId);
+                if (!currentCache.some(row => row.id === msgData.id)) {
+                    currentCache.push(msgData);
+                    setLocalCache(currentRoomId, currentCache);
                 }
+            } else {
+                if (msgData.myId !== currentUser.userId) {
+                    updateUnreadCount(msgData.myId, 1);
+                }
+            }
+
+            if (msgData.myId !== currentUser.userId && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification(`SenninChat: ${msgData.name}`, {
+                    body: msgData.text,
+                    icon: '/apple-touch-icon.png'
+                });
             }
         });
 
@@ -929,48 +934,19 @@
 
             updateUnreadCount(friendId, 0);
 
-            const cacheKey = `chat_history_${currentRoomId}`;
-            const cachedData = localStorage.getItem(cacheKey);
-
-            if (cachedData) {
-                const rows = JSON.parse(cachedData);
+            let cachedRows = getLocalCache(currentRoomId);
+            if (cachedRows.length > 0) {
                 messageArea.innerHTML = '';
-                if (rows.length === 0) {
-                    const initialAvatar = currentChannelName.charAt(0).toUpperCase();
-                    messageArea.innerHTML = `
-                        <div class="message-group received">
-                            <div class="msg-avatar" style="background-color: ${currentChannelColor};">${initialAvatar}</div>
-                            <div class="msg-body">
-                                <div class="msg-header">
-                                    <span class="msg-name">${currentChannelName}</span>
-                                    <span class="msg-time">新しいスレッド</span>
-                                </div>
-                                <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    rows.forEach(row => {
-                        appendMessageElement(row);
-                    });
-                }
-                socket.emit('join_channel_silent', {
-                    myId: currentUser.userId,
-                    friendId: currentFriendId
-                });
-            } else {
-                socket.emit('join_channel', {
-                    myId: currentUser.userId,
-                    friendId: currentFriendId
+                cachedRows.forEach(row => {
+                    appendMessageElement(row);
                 });
             }
+            
+            socket.emit('join_channel', {
+                myId: currentUser.userId,
+                friendId: currentFriendId
+            });
         }
-
-        socket.on('save_history_cache', (data) => {
-            if (data.roomId) {
-                localStorage.setItem(`chat_history_${data.roomId}`, JSON.stringify(data.rows));
-            }
-        });
 
         function toggleReaction(element) {
             const countSpan = element.querySelector('span');
