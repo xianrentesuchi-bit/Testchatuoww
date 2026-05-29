@@ -311,16 +311,9 @@
         .msg-time {
             font-size: 0.7rem;
             color: var(--text-sub);
-        }
-
-        .msg-status {
-            font-size: 0.7rem;
-            color: var(--text-sub);
-            align-self: flex-end;
-        }
-
-        .message-group.sent .msg-status {
-            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .msg-text {
@@ -395,7 +388,12 @@
         .reaction-badge.active {
             background-color: #d3e3fd;
             border-color: #a8c7fa;
-            color: #041e49;
+        }
+
+        .msg-status-read {
+            font-size: 0.7rem;
+            color: var(--brand-color);
+            font-weight: 600;
         }
 
         .input-container {
@@ -675,10 +673,7 @@
                         li.classList.add('chat-item');
                         li.setAttribute('data-friend-id', f.user_id);
                         if (currentChannelName === f.username) li.classList.add('active');
-                        
-                        li.addEventListener('click', function() { 
-                            switchChannel(this, f.username, initial, color, f.user_id); 
-                        });
+                        li.onclick = function() { switchChannel(this, f.username, initial, color, f.user_id); };
                         
                         const badgeCount = unreadCounts[f.user_id] || 0;
                         const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
@@ -768,9 +763,6 @@
         }
 
         function appendMessageElement(data) {
-            let existingMsg = document.querySelector(`.message-group[data-msg-id="${data.id}"]`);
-            if (existingMsg) return;
-
             const msgGroup = document.createElement('div');
             msgGroup.classList.add('message-group');
             msgGroup.setAttribute('data-msg-id', data.id);
@@ -787,27 +779,25 @@
                 displayFormatedText = escapeHTML(plainText);
             }
             
-            const reactionText = data.name === currentUser.username ? '👏' : '👍';
-            const reactionActive = data.my_reaction === 1 ? 'active' : '';
+            const isMyReaction = data.my_reaction > 0 ? 'active' : '';
+            const readStatusHtml = (data.name === currentUser.username && data.is_read > 0) ? `<span class="msg-status-read">既読</span>` : '';
+            const reactionEmoji = data.name === currentUser.username ? '👏' : '👍';
 
-            let statusHtml = '';
             if (data.name === currentUser.username) {
-                statusHtml = `<span class="msg-status">${data.is_read === 1 ? '既読' : '未読'}</span>`;
                 msgGroup.classList.add('sent');
                 msgGroup.innerHTML = `
                     <div class="msg-avatar" style="background-color: var(--brand-color);">自分</div>
                     <div class="msg-body">
                         <div class="msg-header">
                             <span class="msg-name">あなた</span>
-                            <span class="msg-time">${data.timestamp}</span>
+                            <span class="msg-time">${readStatusHtml} ${data.timestamp}</span>
                         </div>
                         ${replyHtml}
                         <div class="msg-text">${displayFormatedText}</div>
                         <div class="msg-actions">
-                            <div class="reaction-badge ${reactionActive}" onclick="sendReaction(${data.id})">${reactionText} <span>${data.reaction_count || 0}</span></div>
+                            <div class="reaction-badge ${isMyReaction}" onclick="toggleReaction(${data.id})">${reactionEmoji} <span>${data.reaction_count || 0}</span></div>
                         </div>
                     </div>
-                    ${statusHtml}
                 `;
             } else {
                 msgGroup.classList.add('received');
@@ -821,10 +811,14 @@
                         ${replyHtml}
                         <div class="msg-text">${displayFormatedText}</div>
                         <div class="msg-actions">
-                            <div class="reaction-badge ${reactionActive}" onclick="sendReaction(${data.id})">${reactionText} <span>${data.reaction_count || 0}</span></div>
+                            <div class="reaction-badge ${isMyReaction}" onclick="toggleReaction(${data.id})">${reactionEmoji} <span>${data.reaction_count || 0}</span></div>
                         </div>
                     </div>
                 `;
+
+                if (data.is_read === 0) {
+                    socket.emit('mark_as_read', { messageId: data.id, userId: currentUser.userId, roomId: currentRoomId });
+                }
             }
             
             enableSwipeToReply(msgGroup, data.text.replace(replyRegex, ''));
@@ -848,10 +842,10 @@
 
             serverRows.forEach(sRow => {
                 const idx = mergedRows.findIndex(lRow => lRow.id === sRow.id);
-                if (idx !== -1) {
-                    mergedRows[idx] = sRow;
-                } else {
+                if (idx === -1) {
                     mergedRows.push(sRow);
+                } else {
+                    mergedRows[idx] = sRow;
                 }
             });
             mergedRows.sort((a, b) => (a.id || 0) - (b.id || 0));
@@ -881,19 +875,12 @@
 
         socket.on('receive_message', (msgData) => {
             if (msgData.channel === currentRoomId) {
-                if (msgData.myId !== currentUser.userId) {
-                    socket.emit('mark_as_read', { myId: currentUser.userId, friendId: currentFriendId });
-                    msgData.is_read = 1;
-                }
                 appendMessageElement(msgData);
                 let currentCache = getLocalCache(currentRoomId);
-                const idx = currentCache.findIndex(row => row.id === msgData.id);
-                if (idx !== -1) {
-                    currentCache[idx] = msgData;
-                } else {
+                if (!currentCache.some(row => row.id === msgData.id)) {
                     currentCache.push(msgData);
+                    setLocalCache(currentRoomId, currentCache);
                 }
-                setLocalCache(currentRoomId, currentCache);
             } else {
                 if (msgData.myId !== currentUser.userId) {
                     updateUnreadCount(msgData.myId, 1);
@@ -908,59 +895,44 @@
             }
         });
 
-        socket.on('messages_read', (data) => {
-            if (data.channel === currentRoomId) {
-                let currentCache = getLocalCache(currentRoomId);
-                currentCache.forEach(row => {
-                    if (row.name === currentUser.username) {
-                        row.is_read = 1;
-                    }
-                });
-                setLocalCache(currentRoomId, currentCache);
-
-                document.querySelectorAll('.message-group.sent').forEach(el => {
-                    const statusEl = el.querySelector('.msg-status');
-                    if (statusEl) statusEl.textContent = '既読';
-                });
-            }
-        });
-
         socket.on('reaction_updated', (data) => {
-            if (currentRoomId === [currentUser.userId, currentFriendId].sort().join('_')) {
-                let currentCache = getLocalCache(currentRoomId);
-                const idx = currentCache.findIndex(row => row.id === data.messageId);
-                if (idx !== -1) {
-                    currentCache[idx].reaction_count = data.count;
-                    if (data.userId === currentUser.userId) {
-                        currentCache[idx].my_reaction = data.active ? 1 : 0;
-                    }
-                    setLocalCache(currentRoomId, currentCache);
+            let currentCache = getLocalCache(currentRoomId);
+            const idx = currentCache.findIndex(row => row.id === data.messageId);
+            if (idx !== -1) {
+                currentCache[idx].reaction_count = data.count;
+                if (data.userId === currentUser.userId) {
+                    currentCache[idx].my_reaction = currentCache[idx].my_reaction > 0 ? 0 : 1;
                 }
+                setLocalCache(currentRoomId, currentCache);
+            }
 
-                const msgGroup = document.querySelector(`.message-group[data-msg-id="${data.messageId}"]`);
-                if (msgGroup) {
-                    const badge = msgGroup.querySelector('.reaction-badge');
-                    if (badge) {
-                        badge.querySelector('span').textContent = data.count;
-                        if (data.userId === currentUser.userId) {
-                            if (data.active) {
-                                badge.classList.add('active');
-                            } else {
-                                badge.classList.remove('active');
-                            }
-                        }
-                    }
+            const msgElement = document.querySelector(`.message-group[data-msg-id="${data.messageId}"]`);
+            if (msgElement) {
+                const badge = msgElement.querySelector('.reaction-badge');
+                const span = badge.querySelector('span');
+                span.textContent = data.count;
+                if (data.userId === currentUser.userId) {
+                    badge.classList.toggle('active');
                 }
             }
         });
 
-        function sendReaction(messageId) {
-            socket.emit('toggle_reaction', {
-                messageId: messageId,
-                userId: currentUser.userId,
-                roomId: currentRoomId
-            });
-        }
+        socket.on('message_read', (data) => {
+            let currentCache = getLocalCache(currentRoomId);
+            const idx = currentCache.findIndex(row => row.id === data.messageId);
+            if (idx !== -1) {
+                currentCache[idx].is_read = 1;
+                setLocalCache(currentRoomId, currentCache);
+            }
+
+            const msgElement = document.querySelector(`.message-group[data-msg-id="${data.messageId}"]`);
+            if (msgElement && msgElement.classList.contains('sent')) {
+                const timeSpan = msgElement.querySelector('.msg-time');
+                if (!timeSpan.querySelector('.msg-status-read')) {
+                    timeSpan.innerHTML = `<span class="msg-status-read">既読</span> ` + timeSpan.innerHTML;
+                }
+            }
+        });
 
         function updateUnreadCount(friendId, amount) {
             if (amount === 0) {
@@ -1033,8 +1005,6 @@
                 cachedRows.forEach(row => {
                     appendMessageElement(row);
                 });
-            } else {
-                messageArea.innerHTML = '';
             }
             
             socket.emit('join_channel', {
@@ -1043,7 +1013,8 @@
             });
         }
 
-        function toggleReaction(element) {
+        function toggleReaction(messageId) {
+            socket.emit('toggle_reaction', { messageId, userId: currentUser.userId, roomId: currentRoomId });
         }
 
         function escapeHTML(str) {
