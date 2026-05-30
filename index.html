@@ -1625,7 +1625,7 @@
                             <span class="msg-name">${currentChannelName}</span>
                             <span class="msg-time">新しいスレッド</span>
                         </div>
-                        <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>
+                        <div class="msg-text">これは ${currentChannelName} ととのトークスペースの最上部です。</div>
                     </div>
                 `;
                 messageArea.appendChild(div);
@@ -1856,8 +1856,33 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
-                    await navigator.serviceWorker.register('/sw.js');
+                    const registration = await navigator.serviceWorker.register('/sw.js');
                     console.log('Service Worker 登録成功');
+
+                    // 通知の許可要求とPush購読の設定
+                    if ('Notification' in window) {
+                        const permission = await Notification.requestPermission();
+                        console.log(permission);
+
+                        if (permission === 'granted') {
+                            const readyReg = await navigator.serviceWorker.ready;
+                            const subscription = await readyReg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: 'あなたの公開鍵'
+                            });
+
+                            await fetch('/api/save-subscription', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    userId: localStorage.getItem('userId') || (currentUser ? currentUser.userId : null),
+                                    subscription
+                                })
+                            });
+                        }
+                    }
                 } catch (err) {
                     console.error('Service Worker 登録失敗', err);
                 }
