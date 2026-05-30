@@ -12,11 +12,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// VAPIDキーの設定（必要に応じて実際の鍵に書き換えてください）
 webpush.setVapidDetails(
     'mailto:admin@example.com',
-    process.env.VAPID_PUBLIC_KEY || 'あなたの公開鍵',
-    process.env.VAPID_PRIVATE_KEY || 'あなたの秘密鍵'
+    process.env.VAPID_PUBLIC_KEY || 'BC51xjBDhUltI7cAwHMsNLwM9ClgGXVVtgkpdaoTlh6rQqTKBB308Bq0wCV4wuLIN0FR0SNdGxgZD0YqScSGwQE',
+    process.env.VAPID_PRIVATE_KEY || 'opVZ_oEAyHKWK5Un_zHBfCpEJ3oVZaZz2DzE8P8WZU0'
 );
 
 const GAS_WEBAPP_URL = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwYsl3issVM1SgFyeuRVCITmIfex6kc7lmuiRXVpxbD195ctM0aAsyUxBV_NZxVz9UH/exec";
