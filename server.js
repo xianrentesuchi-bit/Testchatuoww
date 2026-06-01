@@ -15,7 +15,7 @@ app.use(express.static(__dirname));
 webpush.setVapidDetails(
     'mailto:admin@example.com',
     process.env.VAPID_PUBLIC_KEY || 'BC51xjBDhUltI7cAwHMsNLwM9ClgGXVVtgkpdaoTlh6rQqTKBB308Bq0wCV4wuLIN0FR0SNdGxgZD0YqScSGwQE',
-    process.env.VAPID_PRIVATE_KEY || ''
+    process.env.VAPID_PRIVATE_KEY || 'opVZ_oEAyHKWK5Un_zHBfCpEJ3oVZaZz2DzE8P8WZU0'
 );
 
 const GAS_WEBAPP_URL = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwTAMQ3fr53A5nwDFEChniR3srNYoXW6AQpQAaD4kszMVGei70UnkHw7qP2SNWMz9A/exec";
