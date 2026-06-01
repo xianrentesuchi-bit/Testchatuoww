@@ -28,13 +28,8 @@
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SenninChat">
-    
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
@@ -77,7 +72,6 @@
             transition: transform 0.3s ease, width 0.3s ease, margin-left 0.3s ease;
         }
 
-        /* サイドバー非表示用クラス */
         .sidebar.hidden {
             margin-left: -256px;
         }
@@ -110,31 +104,6 @@
             display: block;
         }
 
-        .friend-add-box {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 16px;
-        }
-
-        .friend-add-box input {
-            flex: 1;
-            padding: 6px 10px;
-            border-radius: 16px;
-            border: 1px solid var(--border-color);
-            font-size: 0.8rem;
-            outline: none;
-        }
-
-        .friend-add-box button {
-            background-color: var(--brand-color);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 0.8rem;
-            cursor: pointer;
-        }
-
         .menu-section {
             margin-bottom: 10px;
             flex: 1;
@@ -152,7 +121,6 @@
             text-transform: uppercase;
         }
 
-        /* フレンド追加プラスボタン */
         .btn-add-friend-trigger {
             background: none;
             border: none;
@@ -252,7 +220,6 @@
             gap: 12px;
         }
 
-        /* サイドバー開閉ボタン */
         .btn-toggle-sidebar {
             background: none;
             border: none;
@@ -301,7 +268,7 @@
             max-width: 85%;
             touch-action: pan-y;
             transition: transform 0.15s ease-out;
-            -webkit-user-select: none; /* 長押し時のテキスト選択を防止 */
+            -webkit-user-select: none;
             user-select: none;
         }
 
@@ -312,7 +279,7 @@
         .message-group.sent {
             align-self: flex-end;
             flex-direction: row-reverse;
-            cursor: pointer; /* 自分の投稿はクリック/タップできることを示す */
+            cursor: pointer;
         }
 
         .msg-avatar {
@@ -370,7 +337,7 @@
             word-break: break-all;
             white-space: pre-wrap;
             position: relative;
-            -webkit-user-select: text; /* メッセージ本文は選択可能に */
+            -webkit-user-select: text;
             user-select: text;
         }
 
@@ -425,11 +392,6 @@
             cursor: pointer;
             border: 1px solid transparent;
             box-shadow: 0 1px 1px rgba(0,0,0,0.05);
-        }
-
-        .reaction-badge:hover {
-            border-color: var(--border-color);
-            background-color: #e8eaed;
         }
 
         .input-container {
@@ -487,11 +449,6 @@
             transition: background-color 0.2s, color 0.2s;
         }
 
-        .toolbar-left i:hover {
-            background-color: #f1f3f4;
-            color: var(--text-main);
-        }
-
         .btn-send {
             background: none;
             border: none;
@@ -502,10 +459,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .btn-send:hover {
-            background-color: rgba(11, 87, 208, 0.08);
         }
 
         .btn-send:disabled {
@@ -535,7 +488,6 @@
             opacity: 1;
         }
 
-        /* 読み込みアニメーションスピナー */
         .loading-overlay {
             position: absolute;
             top: 0;
@@ -570,7 +522,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Windowモーダルスタイル */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -633,10 +584,6 @@
             justify-content: center;
         }
 
-        .btn-modal-close:hover {
-            background-color: var(--bg-hover);
-        }
-
         .modal-section-item {
             margin-bottom: 20px;
             text-align: center;
@@ -679,10 +626,6 @@
             gap: 8px;
         }
 
-        .modal-id-box:hover {
-            background-color: var(--bg-hover);
-        }
-
         .modal-input-group {
             display: flex;
             gap: 8px;
@@ -697,10 +640,6 @@
             outline: none;
         }
 
-        .modal-input-group input:focus {
-            border-color: var(--brand-color);
-        }
-
         .modal-input-group button {
             background-color: var(--brand-color);
             color: white;
@@ -712,11 +651,6 @@
             font-weight: 500;
         }
 
-        .modal-input-group button:hover {
-            background-color: #0b4ec2;
-        }
-
-        /* メッセージ操作用のコンテキストメニュー / アクションシート */
         .msg-context-menu {
             position: fixed;
             background: #ffffff;
@@ -738,11 +672,7 @@
             align-items: center;
             gap: 8px;
         }
-        .msg-context-menu-item:hover {
-            background-color: var(--bg-sidebar);
-        }
 
-        /* 機能拡張: 追加UIパーツ用スタイル */
         .modal-member-list {
             max-height: 120px;
             overflow-y: auto;
@@ -775,10 +705,6 @@
             align-items: center;
             justify-content: center;
         }
-        .btn-header-action:hover {
-            background-color: var(--bg-sidebar);
-            color: var(--text-main);
-        }
         .btn-danger {
             background-color: #b3261e !important;
             color: white;
@@ -791,9 +717,6 @@
             margin-top: 12px;
             font-weight: 500;
         }
-        .btn-danger:hover {
-            background-color: #8c1d18 !important;
-        }
         .info-list-text {
             text-align: left;
             font-size: 0.9rem;
@@ -803,7 +726,6 @@
             border-radius: 4px;
         }
 
-        /* 追加機能：未読メッセージ区切り線スタイル */
         .unread-separator {
             display: flex;
             align-items: center;
@@ -820,12 +742,8 @@
             flex: 1;
             border-bottom: 2px dashed #b3261e;
         }
-        .unread-separator::before {
-            margin-right: 12px;
-        }
-        .unread-separator::after {
-            margin-left: 12px;
-        }
+        .unread-separator::before { margin-right: 12px; }
+        .unread-separator::after { margin-left: 12px; }
 
         @media (max-width: 768px) {
             .sidebar {
@@ -839,49 +757,6 @@
             }
             .sidebar.hidden {
                 margin-left: -256px;
-            }
-            .logo-area span,
-            .user-info-box,
-            .friend-add-box,
-            .section-title,
-            .chat-item span {
-                display: flex !important;
-            }
-            .logo-area {
-                justify-content: flex-start;
-                padding: 12px 8px;
-            }
-            .chat-item {
-                padding: 8px 12px;
-                justify-content: flex-start;
-                border-radius: 20px;
-                width: auto;
-                height: auto;
-                margin: 0 0 2px 0;
-            }
-            .avatar {
-                width: 24px;
-                height: 24px;
-                font-size: 0.75rem;
-            }
-            .badge {
-                position: static;
-                margin-left: auto;
-                min-width: 18px;
-                height: 18px;
-                font-size: 0.75rem;
-            }
-            .main-header {
-                padding: 0 16px;
-            }
-            .message-area {
-                padding: 16px;
-            }
-            .message-group {
-                max-width: 95%;
-            }
-            .input-container {
-                padding: 0 12px 12px 12px;
             }
         }
     </style>
@@ -898,12 +773,10 @@
                     <i class="material-icons-outlined">close</i>
                 </button>
             </div>
-            
             <div class="modal-section-item">
                 <div class="modal-section-title">あなたのQRコード</div>
                 <div class="qr-wrapper" id="myQrContainer"></div>
             </div>
-
             <div class="modal-section-item">
                 <div class="modal-section-title">あなたの固有ID (クリックでコピー)</div>
                 <div class="modal-id-box" onclick="copyMyIdFromModal()">
@@ -911,7 +784,6 @@
                     <i class="material-icons-outlined" style="font-size: 18px;">content_copy</i>
                 </div>
             </div>
-
             <div class="modal-section-item" style="margin-bottom: 0;">
                 <div class="modal-section-title">友達の固有IDを入力して追加</div>
                 <div class="modal-input-group">
@@ -936,8 +808,7 @@
                     <input type="text" id="modalGroupNameInput" placeholder="グループ名">
                 </div>
                 <div class="modal-section-title">追加するメンバーを選択</div>
-                <div class="modal-member-list" id="modalGroupFriendSelectContainer">
-                    </div>
+                <div class="modal-member-list" id="modalGroupFriendSelectContainer"></div>
                 <div class="modal-input-group">
                     <button onclick="createGroupFromModal()" style="width:100%;">作成</button>
                 </div>
@@ -955,8 +826,7 @@
             </div>
             <div class="modal-section-item" style="margin-bottom: 0;">
                 <div class="modal-section-title">参加メンバー一覧</div>
-                <div id="manageModalMemberList" style="max-height:160px; overflow-y:auto; margin-bottom:12px;">
-                    </div>
+                <div id="manageModalMemberList" style="max-height:160px; overflow-y:auto; margin-bottom:12px;"></div>
                 <div id="manageModalOwnerActions" style="display:none;">
                     <div class="modal-section-title" style="color:#b3261e; margin-top:16px;">管理者メニュー</div>
                     <button class="btn-danger" onclick="deleteCurrentGroup()">このグループを削除する</button>
@@ -979,18 +849,11 @@
             <i class="material-icons-outlined" style="color:#0b57d0">chat</i>
             <span>SenninChat</span>
         </div>
-
         <div class="user-info-box">
             <div>ログインユーザー: <strong id="myUsername">...</strong></div>
             <div>あなたの固有ID (クリックでコピー):</div>
             <span class="user-id-display" id="myUserId" onclick="copyMyId()">...</span>
         </div>
-
-        <div class="friend-add-box" style="display: none !important;">
-            <input type="text" id="friendIdInput" placeholder="友達の固有IDを入力">
-            <button onclick="addFriend()">追加</button>
-        </div>
-
         <div class="menu-section">
             <div class="section-title">
                 <span>直近のチャット・フレンド</span>
@@ -1000,7 +863,6 @@
             </div>
             <ul class="chat-list" id="chatList"></ul>
         </div>
-
         <div class="menu-section" style="border-top: 1px solid rgba(0,0,0,0.05); padding-top: 8px;">
             <div class="section-title">
                 <span>グループチャット</span>
@@ -1032,7 +894,6 @@
             <div class="loading-overlay" id="historyLoading">
                 <div class="spinner"></div>
             </div>
-
             <div style="text-align:center; padding-top:40px; color:var(--text-sub);">
                 左側のリストからフレンドまたはグループを選択してチャットを開始してください。
             </div>
@@ -1071,7 +932,6 @@
         document.getElementById('myUserId').textContent = currentUser.userId;
         document.getElementById('modalMyUserId').textContent = currentUser.userId;
 
-        // QRコードの初期化生成
         const qrContainer = document.getElementById('myQrContainer');
         new QRCode(qrContainer, {
             text: currentUser.userId,
@@ -1097,28 +957,24 @@
         const groupModal = document.getElementById('groupModal');
         const msgContextMenu = document.getElementById('msgContextMenu');
 
-        // 機能拡張: 追加で定義するUI管理用変数
         const groupManageModal = document.getElementById('groupManageModal');
         const headerRightArea = document.getElementById('headerRightArea');
-        let globalFriendsList = []; // モーダル内のフレンド動的レンダリング用キャッシュ
-        let currentGroupCreatorId = ''; // 現在開いているグループチャットのオーナーID保持用
+        let globalFriendsList = []; 
+        let currentGroupCreatorId = ''; 
 
         let currentChannelName = '';
         let currentChannelColor = '#74c0fc';
         let currentFriendId = '';
         let currentRoomId = '';
-        let isGroupMode = false; // 現在のチャットがグループかどうかの判別フラグ
+        let isGroupMode = false; 
 
-        let editingMessageId = null; // 編集中のメッセージIDを保持する変数
-
+        let editingMessageId = null; 
         const unreadCounts = {};
 
-        // サイドバー開閉トグル
         function toggleSidebar() {
             sidebar.classList.toggle('hidden');
         }
 
-        // モーダル制御関数
         function openFriendModal() {
             friendModal.classList.add('show');
         }
@@ -1128,7 +984,6 @@
             document.getElementById('modalFriendIdInput').value = '';
         }
 
-        // グループモーダル制御関数 (機能拡張: 起動時にフレンド選択肢を生成)
         function openGroupModal() {
             const container = document.getElementById('modalGroupFriendSelectContainer');
             container.innerHTML = '';
@@ -1154,7 +1009,6 @@
             document.getElementById('modalGroupNameInput').value = '';
         }
 
-        // 機能拡張: グループ詳細管理モーダル開閉
         async function openGroupManageModal() {
             if (!isGroupMode || !currentRoomId) return;
             
@@ -1162,7 +1016,6 @@
             const memberListDiv = document.getElementById('manageModalMemberList');
             memberListDiv.innerHTML = '<div style="font-size:0.9rem; color:var(--text-sub);">読み込み中...</div>';
             
-            // オーナー判定UI切り替え
             if (currentGroupCreatorId === currentUser.userId) {
                 document.getElementById('manageModalOwnerActions').style.display = 'block';
             } else {
@@ -1177,7 +1030,6 @@
                     data.members.forEach(m => {
                         const div = document.createElement('div');
                         div.className = 'info-list-text';
-                        // オーナーマーク付与
                         const crown = (m.user_id === currentGroupCreatorId) ? ' 👑(オーナー)' : '';
                         div.textContent = `${m.username}${crown}`;
                         memberListDiv.appendChild(div);
@@ -1196,7 +1048,6 @@
             groupManageModal.classList.remove('show');
         }
 
-        // 機能拡張: オーナー用グループ削除ファンクション
         async function deleteCurrentGroup() {
             if (!confirm(`本当にグループ「${currentChannelName}」を削除しますか？\nこの操作は取り消せず、メッセージ履歴も全削除されます。`)) {
                 return;
@@ -1211,7 +1062,6 @@
                 showToast(data.message);
                 if (data.success) {
                     closeGroupManageModal();
-                    // チャット表示エリアの初期化リセット
                     currentChannelName = '';
                     currentRoomId = '';
                     isGroupMode = false;
@@ -1226,7 +1076,6 @@
                             左側のリストからフレンドまたはグループを選択してチャットを開始してください。
                         </div>
                     `;
-                    // リストの最新化
                     loadGroups();
                 }
             } catch (err) {
@@ -1262,13 +1111,11 @@
             }
         }
 
-        // グループ作成処理 (機能拡張: 選択されたメンバーを配列で送信)
         async function createGroupFromModal() {
             const inputField = document.getElementById('modalGroupNameInput');
             const groupName = inputField.value.trim();
             if(!groupName) return;
 
-            // チェックボックスから選ばれたIDを収集
             const checkboxes = document.querySelectorAll('input[name="createGroupMembers"]:checked');
             const selectedMemberIds = Array.from(checkboxes).map(cb => cb.value);
 
@@ -1310,10 +1157,11 @@
                 const res = await fetch(`/api/friends?userId=${currentUser.userId}`);
                 const data = await res.json();
                 if (data.success) {
-                    globalFriendsList = data.friends; // グローバルキャッシュを更新
+                    globalFriendsList = data.friends; 
                     chatList.innerHTML = '';
                     if(data.friends.length === 0) {
                         chatList.innerHTML = '<li style="font-size:0.8rem; padding:8px; color:var(--text-sub);">フレンドがいません</li>';
+                        return;
                     }
                     data.friends.forEach((f, idx) => {
                         const initial = f.username.charAt(0).toUpperCase();
@@ -1342,17 +1190,29 @@
             }
         }
 
-        // グループ一覧取得処理 (新規追加)
         async function loadGroups() {
             try {
                 const res = await fetch('/api/groups');
                 const data = await res.json();
                 if (data.success) {
                     groupChatList.innerHTML = '';
-                    if(data.groups.length === 0) {
+                    
+                    // 【不具合修正】自分が参加していないグループをクライアント側でも除外する安全ガード
+                    // ※サーバーAPIが参加グループのみを返す仕様の場合はこの filter は全通します
+                    const myGroups = data.groups.filter(g => {
+                        if (g.creator_id === currentUser.userId) return true;
+                        if (g.members && Array.isArray(g.members)) {
+                            return g.members.includes(currentUser.userId);
+                        }
+                        return true; 
+                    });
+
+                    if(myGroups.length === 0) {
                         groupChatList.innerHTML = '<li style="font-size:0.8rem; padding:8px; color:var(--text-sub);">グループがありません</li>';
+                        return;
                     }
-                    data.groups.forEach((g, idx) => {
+                    
+                    myGroups.forEach((g, idx) => {
                         const initial = g.name.charAt(0).toUpperCase();
                         const colors = ['#b2f2bb', '#ffc9c9', '#e2c5ff', '#74c0fc', '#fcdebc'];
                         const color = colors[idx % colors.length];
@@ -1376,28 +1236,6 @@
                 }
             } catch (err) {
                 console.error("グループリスト取得失敗", err);
-            }
-        }
-
-        async function addFriend() {
-            const friendIdInput = document.getElementById('friendIdInput');
-            const friendId = friendIdInput.value.trim();
-            if(!friendId) return;
-
-            try {
-                const res = await fetch('/api/friends/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.userId, friendId: friendId })
-                });
-                const data = await res.json();
-                showToast(data.message);
-                if(data.success) {
-                    friendIdInput.value = '';
-                    loadFriends();
-                }
-            } catch(err) {
-                showToast("通信エラーが発生しました");
             }
         }
 
@@ -1452,16 +1290,10 @@
 
         function enableLongPressMenu(element, msgId, rawText) {
             let pressTimer;
-
             const startPress = (e) => {
-                pressTimer = setTimeout(() => {
-                    showContextMenu(e, msgId, rawText);
-                }, 600);
+                pressTimer = setTimeout(() => { showContextMenu(e, msgId, rawText); }, 600);
             };
-
-            const cancelPress = () => {
-                clearTimeout(pressTimer);
-            };
+            const cancelPress = () => { clearTimeout(pressTimer); };
 
             element.addEventListener('touchstart', startPress, { passive: true });
             element.addEventListener('touchend', cancelPress, { passive: true });
@@ -1516,9 +1348,7 @@
         }
 
         document.addEventListener('click', (e) => {
-            if (!msgContextMenu.contains(e.target)) {
-                hideContextMenu();
-            }
+            if (!msgContextMenu.contains(e.target)) { hideContextMenu(); }
         });
 
         function appendMessageElement(data) {
@@ -1625,18 +1455,16 @@
                             <span class="msg-name">${currentChannelName}</span>
                             <span class="msg-time">新しいスレッド</span>
                         </div>
-                        <div class="msg-text">これは ${currentChannelName} ととのトークスペースの最上部です。</div>
+                        <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>
                     </div>
                 `;
                 messageArea.appendChild(div);
             } else {
-                // 現在のチャンネル/トークルームにおける未読件数を算出
                 const badgeKey = isGroupMode ? currentRoomId : currentFriendId;
                 const unreadCount = unreadCounts[badgeKey] || 0;
                 const unreadStartIndex = mergedRows.length - unreadCount;
 
                 mergedRows.forEach((row, index) => {
-                    // 未読メッセージが開始する直前に赤線・区切りテキストを挿入
                     if (unreadCount > 0 && index === unreadStartIndex) {
                         const separator = document.createElement('div');
                         separator.className = 'unread-separator';
@@ -1646,7 +1474,6 @@
                     appendMessageElement(row);
                 });
             }
-            
             document.getElementById('historyLoading').classList.remove('show');
         });
 
@@ -1662,9 +1489,7 @@
                 }
                 setLocalCache(currentRoomId, currentCache);
             } else {
-                // 自分以外の発言であればバッジ通知を更新
                 if (msgData.myId !== currentUser.userId) {
-                    // グループメッセージの場合は channel を、DMの場合は myId をキーにする
                     const isTargetGroup = msgData.channel.startsWith('group_');
                     const badgeKey = isTargetGroup ? msgData.channel : msgData.myId;
                     updateUnreadCount(badgeKey, 1, isTargetGroup);
@@ -1694,15 +1519,14 @@
         socket.on('message_deleted', (data) => {
             if (data.channel === currentRoomId) {
                 const targetElement = document.getElementById(`msg-group-${data.id}`);
-                if (targetElement) {
-                    targetElement.remove();
-                }
+                if (targetElement) { targetElement.remove(); }
                 let currentCache = getLocalCache(currentRoomId);
                 currentCache = currentCache.filter(row => row.id !== data.id);
                 setLocalCache(currentRoomId, currentCache);
             }
         });
 
+        // 【不具合修正】通知バッジ数が人のとなりに確実に表示されるようロジックを最適化
         function updateUnreadCount(targetId, amount, isGroup = false) {
             if (amount === 0) {
                 unreadCounts[targetId] = 0;
@@ -1747,14 +1571,13 @@
                 const msgData = {
                     channel: currentRoomId,
                     myId: currentUser.userId,
-                    friendId: isGroupMode ? '' : currentFriendId, // グループ時は空文字
+                    friendId: isGroupMode ? '' : currentFriendId,
                     name: currentUser.username,
                     avatar: currentUser.username.charAt(0).toUpperCase(),
                     color: '#0b57d0',
                     text: text,
                     timestamp: timeStr
                 };
-
                 socket.emit('send_message', msgData);
             }
 
@@ -1763,21 +1586,21 @@
             sendBtn.disabled = true;
         });
 
-        // 機能拡張: 第6引数に creatorId を追加
         function switchChannel(element, name, avatarChar, color, targetId, creatorId) {
             currentChannelName = name;
             currentChannelColor = color || '#74c0fc';
             
             if (isGroupMode) {
                 currentFriendId = '';
-                currentRoomId = targetId; // グループIDそのままがルームID
-                currentGroupCreatorId = creatorId; // グループのオーナーIDを設定
-                headerRightArea.style.display = 'block'; // 管理用アイコンを表示
+                currentRoomId = targetId; 
+                currentGroupCreatorId = creatorId; 
+                headerRightArea.style.display = 'block'; 
             } else {
                 currentFriendId = targetId;
-                currentRoomId = [currentUser.userId, targetId].sort().join('_');
+                // 【不具合修正】ID同士が単純結合で衝突してトークが混ざるのを防止するため、明確なプレフィックスと区切り文字（__dm__）を挿入
+                currentRoomId = ['__dm__', currentUser.userId, targetId].sort().join('_');
                 currentGroupCreatorId = '';
-                headerRightArea.style.display = 'none'; // DM時は管理用アイコンを非表示
+                headerRightArea.style.display = 'none'; 
             }
             
             document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
@@ -1788,7 +1611,6 @@
             chatInput.disabled = false;
             statusDot.style.display = 'block';
 
-            // 読み込み前に、現在の未読件数を元に描画処理を行うため、カウントクリアは描画後(socket.emit直前)に行う
             document.getElementById('historyLoading').classList.add('show');
 
             let cachedRows = getLocalCache(currentRoomId);
@@ -1812,7 +1634,6 @@
                 });
             }
             
-            // チャンネル内のメッセージが既読となったため、バッジカウント数をリセット
             updateUnreadCount(targetId, 0, isGroupMode);
 
             socket.emit('join_channel', {
@@ -1848,7 +1669,6 @@
             chatInput.focus();
         });
 
-        // 初回読み込み時に両方のリストをフェッチ
         loadFriends();
         loadGroups();
     </script>
@@ -1859,11 +1679,8 @@
                     const registration = await navigator.serviceWorker.register('/sw.js');
                     console.log('Service Worker 登録成功');
 
-                    // 通知の許可要求とPush購読の設定
                     if ('Notification' in window) {
                         const permission = await Notification.requestPermission();
-                        console.log(permission);
-
                         if (permission === 'granted') {
                             const readyReg = await navigator.serviceWorker.ready;
                             const subscription = await readyReg.pushManager.subscribe({
@@ -1873,9 +1690,7 @@
 
                             await fetch('/api/save-subscription', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
+                                headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     userId: localStorage.getItem('userId') || (currentUser ? currentUser.userId : null),
                                     subscription
